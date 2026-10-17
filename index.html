@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mein Wunschzettel</title>
+  <meta name="theme-color" content="#b81c26">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎄</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Hintergrund mit sanftem Verlauf und fallendem Schnee -->
+  <div class="background" aria-hidden="true"><canvas id="snow"></canvas></div>
+
+  <header class="navbar">
+    <button class="nav-back" id="navBack" hidden>
+      <svg viewBox="0 0 24 24"><path d="M15 4l-8 8 8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Zurück</span>
+    </button>
+    <div class="nav-actions" id="navActions"></div>
+  </header>
+
+  <main id="app"></main>
+
+  <!-- Formular zum Anlegen und Bearbeiten eines Wunsches -->
+  <div class="sheet-backdrop" id="sheet" hidden>
+    <form class="sheet" id="editForm" autocomplete="off" novalidate>
+      <div class="sheet-bar">
+        <button type="button" class="link" id="cancelEdit">Abbrechen</button>
+        <strong id="sheetTitle">Neuer Wunsch</strong>
+        <button type="submit" class="link bold" id="saveEdit">Sichern</button>
+      </div>
+      <div class="sheet-body">
+        <section class="form-section">
+          <img id="previewImage" class="preview-image" alt="" hidden>
+          <label class="form-row action">
+            <svg class="icon" viewBox="0 0 24 24"><use href="#i-photo"/></svg>
+            <span id="photoLabel">Bild hinzufügen</span>
+            <input type="file" id="photoInput" accept="image/*" hidden>
+          </label>
+          <button type="button" class="form-row action destructive" id="removePhoto" hidden>
+            <svg class="icon" viewBox="0 0 24 24"><use href="#i-trash"/></svg>
+            <span>Bild entfernen</span>
+          </button>
+          <p class="form-error" id="photoError" hidden>Das Bild konnte nicht geladen werden.</p>
+        </section>
+
+        <h3 class="section-header">Wunsch</h3>
+        <section class="form-section">
+          <input class="form-row" id="nameInput" placeholder="Name" maxlength="200">
+          <textarea class="form-row" id="detailsInput" placeholder="Beschreibung" rows="3"></textarea>
+        </section>
+
+        <h3 class="section-header">Idealo</h3>
+        <section class="form-section">
+          <input class="form-row" id="priceInput" placeholder="Bester Preis" inputmode="decimal">
+          <button type="button" class="form-row action" id="idealoButton">
+            <svg class="icon" viewBox="0 0 24 24"><use href="#i-search"/></svg>
+            <span>Bei Idealo suchen</span>
+          </button>
+        </section>
+        <p class="section-footer">Suche den Artikel bei Idealo und trage den günstigsten Preis hier ein.</p>
+
+        <section class="form-section" id="deleteSection" hidden>
+          <button type="button" class="form-row action destructive" id="deleteButton">
+            <svg class="icon" viewBox="0 0 24 24"><use href="#i-trash"/></svg>
+            <span>Wunsch löschen</span>
+          </button>
+        </section>
+      </div>
+    </form>
+  </div>
+
+  <!-- Bestätigungsdialog -->
+  <div class="dialog-backdrop" id="confirm" hidden>
+    <div class="action-sheet" role="alertdialog" aria-labelledby="confirmTitle">
+      <div class="action-group">
+        <p class="action-title" id="confirmTitle">Diesen Wunsch löschen?</p>
+        <button type="button" class="action-button destructive" id="confirmYes">Löschen</button>
+      </div>
+      <div class="action-group">
+        <button type="button" class="action-button bold" id="confirmNo">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <!-- Symbole (angelehnt an SF Symbols) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-gift" viewBox="0 0 24 24"><path fill="currentColor" d="M20 7h-2.2A3 3 0 0 0 12 3.8 3 3 0 0 0 6.2 7H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h7.25V7H13v5h7a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1Zm-11-.1a1.4 1.4 0 1 1 2.1-1.2L11.2 7H9.5a1.4 1.4 0 0 1-.5-.1Zm6.5.1h-2.7l.1-1.3A1.4 1.4 0 1 1 15.5 7ZM4.5 13.5V20a1 1 0 0 0 1 1h5.75v-7.5Zm8.5 0V21h5.5a1 1 0 0 0 1-1v-6.5Z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M7.5 12.3l3 3 6-6.3" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><path fill="#fff" d="M12 6.2l1.7 3.6 3.9.5-2.9 2.7.8 3.9L12 15l-3.5 1.9.8-3.9-2.9-2.7 3.9-.5Z"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path fill="currentColor" d="M3.5 4.5l.8 1.6 1.7.2-1.2 1.2.3 1.7-1.6-.8-1.5.8.3-1.7L1 6.3l1.7-.2ZM3.5 10.5l.8 1.6 1.7.2-1.2 1.2.3 1.7-1.6-.8-1.5.8.3-1.7L1 12.3l1.7-.2ZM3.5 16.5l.8 1.6 1.7.2-1.2 1.2.3 1.7-1.6-.8-1.5.8.3-1.7L1 18.3l1.7-.2Z"/><path d="M9 7h12M9 13h12M9 19h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-photo" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="9.5" r="1.8" fill="currentColor"/><path d="M3 17l5-5 4 4 3-3 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5L21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 6.5h16M9.5 6.5V4.5h5v2M6.5 6.5l1 13.5h9l1-13.5M10 10v6.5M14 10v6.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3v12M7.5 7.5L12 3l4.5 4.5M8 10.5H6a1.5 1.5 0 0 0-1.5 1.5v7.5A1.5 1.5 0 0 0 6 21h12a1.5 1.5 0 0 0 1.5-1.5V12a1.5 1.5 0 0 0-1.5-1.5h-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M7 12h10" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24"><path d="M4 8h16M4 12h16M4 16h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  </svg>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
