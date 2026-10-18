@@ -338,3 +338,21 @@ body.picking .navbar { visibility: hidden; }
 .primary-button.narrow { max-width: 320px; margin-top: 20px; }
 .local-note { margin: 0; text-align: center; font-size: 13px; color: var(--secondary); }
 .picker-note { margin-top: 32px; max-width: 420px; }
+
+/* Profilbild aussuchen */
+.edit-avatar { display: inline-flex; align-items: center; gap: 10px; margin: -6px 0 18px; color: var(--christmas-red); font-size: 15px; font-weight: 600; }
+.emoji-sheet { max-width: 480px; }
+.emoji-panel { padding-bottom: 14px; }
+.emoji-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; padding: 14px; max-height: 50vh; overflow-y: auto; }
+.emoji-choice {
+  aspect-ratio: 1; border-radius: 10px; font-size: 28px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(120, 120, 128, 0.12);
+}
+.emoji-choice:hover { background: rgba(120, 120, 128, 0.22); }
+.emoji-choice.selected { background: var(--avatar); box-shadow: 0 0 0 3px var(--christmas-gold); }
+.emoji-custom { display: flex; gap: 8px; padding: 0 14px; }
+.emoji-custom .emoji-input { margin: 0; max-width: none; flex: 1; font-size: 17px; padding: 10px 12px; }
+.emoji-custom .primary-button { width: auto; padding: 0 18px; min-height: 44px; }
+.emoji-sheet .action-group { background: #fff; }
+@media (prefers-color-scheme: dark) { .emoji-sheet .action-group { background: rgb(28, 28, 30); } }

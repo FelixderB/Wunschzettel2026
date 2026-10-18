@@ -79,11 +79,14 @@ class SupabaseStore {
   }
 
   async load(viewer) {
-    const [rows, gifts] = await Promise.all([
+    const [rows, gifts, profiles] = await Promise.all([
       this.rpc("wz_wishes"),
       viewer ? this.rpc("wz_gifts", { viewer }) : [],
+      // Ohne profil-emojis.sql gibt es die Funktion noch nicht, dann bleiben die Standard-Emojis
+      this.rpc("wz_profiles").catch((error) => { if (error.kind === "setup") return []; throw error; }),
     ]);
     return {
+      profiles: new Map(profiles.map((p) => [p.id, p.emoji])),
       wishes: rows.map((r) => ({
         id: r.id, owner: r.owner, name: r.name, details: r.details,
         bestPrice: r.best_price == null ? null : Number(r.best_price),
@@ -103,6 +106,15 @@ class SupabaseStore {
   deleteWish(id) { return this.rpc("wz_delete_wish", { wish_id: id }); }
   reorder(owner, ids) { return this.rpc("wz_reorder", { owner_id: owner, ids }); }
   setGift(wishId, viewer, give) { return this.rpc("wz_set_gift", { wish_id: wishId, viewer, give }); }
+
+  async setEmoji(profileId, emoji) {
+    try {
+      await this.rpc("wz_set_emoji", { profile_id: profileId, emoji });
+    } catch (error) {
+      if (error.kind === "setup") throw new StoreError("failed", "Bitte zuerst profil-emojis.sql in Supabase ausführen.");
+      throw error;
+    }
+  }
 }
 
 /** Ohne Supabase: alles nur in diesem Browser, mit den gleichen Regeln wie die Datenbank */
@@ -154,7 +166,11 @@ class LocalStore {
     // Wie in der Datenbank: nie die Geschenke für eigene Wünsche herausgeben
     const gifts = new Map(Object.entries(this.read("wunschzettel2026.gifts", {}))
       .filter(([id]) => viewer && owners.has(id) && owners.get(id) !== viewer));
-    return { wishes, gifts };
+    return { wishes, gifts, profiles: new Map(Object.entries(this.read("wunschzettel2026.profiles", {}))) };
+  }
+
+  async setEmoji(profileId, emoji) {
+    this.write("wunschzettel2026.profiles", { ...this.read("wunschzettel2026.profiles", {}), [profileId]: emoji });
   }
 
   async saveWish(wish) {
@@ -209,6 +225,8 @@ let statusMessage = "";
 let wishes = [];
 /** wishId → Profil, das ihn schenkt; enthält nie Geschenke für eigene Wünsche */
 let gifts = new Map();
+/** Profil → selbst ausgesuchtes Emoji (fehlt eins, gilt das Standard-Emoji) */
+let profileEmojis = new Map();
 let dragging = false;
 
 // Das gewählte Profil gilt, bis der Tab geschlossen oder das Profil gewechselt wird
@@ -236,6 +254,7 @@ async function refresh() {
     const data = await store.load(currentProfile?.id);
     wishes = data.wishes;
     gifts = data.gifts;
+    profileEmojis = data.profiles;
     status = "ready";
   } catch (error) {
     handleError(error);
@@ -456,7 +475,53 @@ function setNav({ back = false, actions = [] }) {
 }
 
 function avatar(profile, extraClass = "") {
-  return el("span", { class: "avatar " + extraClass, style: `--avatar:${profile.color}`, "aria-hidden": "true" }, profile.emoji);
+  return el("span", { class: "avatar " + extraClass, style: `--avatar:${profile.color}`, "aria-hidden": "true" },
+    profileEmojis.get(profile.id) ?? profile.emoji);
+}
+
+// ---------- Profilbild (Emoji) selbst aussuchen ----------
+
+const EMOJI_CHOICES = [
+  "👩", "👨", "🧒", "👧", "👦", "👶", "🧑", "👱‍♀️", "👱", "🧔", "👵", "👴",
+  "🧑‍🎄", "🎅", "🤶", "🦸", "🧙", "🧚", "🥷", "👸", "🤴", "🧜‍♀️", "🤠", "😎",
+  "🐶", "🐱", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐸", "🐵", "🦄",
+  "🐧", "🦖", "🐳", "🦋", "🐢", "🐙", "🦌", "⛄", "🎄", "⭐", "❄️", "🎁",
+  "🍪", "🧁", "🍕", "⚽", "🎮", "🎸", "🚀", "🌈", "💖", "🌻", "🦕", "🐞",
+];
+
+/** Erstes sichtbares Zeichen (auch zusammengesetzte Emojis wie 👱‍♀️ oder 🎅🏽) */
+function firstEmoji(text) {
+  const trimmed = text.trim();
+  if (!trimmed) return "";
+  if ("Segmenter" in Intl) return new Intl.Segmenter("de", { granularity: "grapheme" }).segment(trimmed)[Symbol.iterator]().next().value.segment;
+  return Array.from(trimmed)[0];
+}
+
+function openEmojiPicker() {
+  const profile = currentProfile;
+  const current = profileEmojis.get(profile.id) ?? profile.emoji;
+  const close = () => backdrop.remove();
+  const choose = async (emoji) => {
+    if (!emoji) return;
+    close();
+    // Sofort anzeigen, dann speichern
+    profileEmojis.set(profile.id, emoji);
+    render();
+    if (await mutate(() => store.setEmoji(profile.id, emoji))) toast("Profilbild geändert");
+  };
+  const custom = el("input", { class: "code-input emoji-input", placeholder: "Anderes Emoji", "aria-label": "Anderes Emoji", maxlength: "16" });
+  const backdrop = el("div", { class: "dialog-backdrop", onclick: (e) => { if (e.target === backdrop) close(); } },
+    el("div", { class: "action-sheet emoji-sheet", role: "dialog", "aria-label": "Profilbild aussuchen" },
+      el("div", { class: "action-group emoji-panel" },
+        el("p", { class: "action-title" }, `Profilbild für ${profile.name}`),
+        el("div", { class: "emoji-grid" }, EMOJI_CHOICES.map((emoji) =>
+          el("button", { class: "emoji-choice" + (emoji === current ? " selected" : ""), style: `--avatar:${profile.color}`,
+            "aria-label": emoji, onclick: () => choose(emoji) }, emoji))),
+        el("form", { class: "emoji-custom", onsubmit: (e) => { e.preventDefault(); choose(firstEmoji(custom.value)); } },
+          custom, el("button", { class: "primary-button", type: "submit" }, "Nehmen"))),
+      el("div", { class: "action-group" },
+        el("button", { class: "action-button bold", onclick: close }, "Abbrechen"))));
+  document.body.append(backdrop);
 }
 
 function profileButton() {
@@ -544,6 +609,7 @@ function renderHome() {
 
   app.replaceChildren(
     el("h1", { class: "large-title" }, `🎅 ${possessive(currentProfile.name)} Wunschzettel`),
+    el("button", { class: "edit-avatar", onclick: openEmojiPicker }, avatar(currentProfile), el("span", {}, "Profilbild ändern")),
     el("div", { class: "stack" },
       el("div", { class: "countdown" }, el("span", { class: "emoji" }, "🎄"), el("span", {}, countdownText())),
       el("div", { class: "stat-row" },
