@@ -614,8 +614,8 @@ function renderHome() {
       el("div", { class: "countdown" }, el("span", { class: "emoji" }, "🎄"), el("span", {}, countdownText())),
       el("div", { class: "stat-row" },
         statCard("Meine Wünsche", String(own.length), "gift", "var(--christmas-red)"),
-        statCard("Ich schenke", String(myGifts.length), "check", "var(--christmas-green)")),
-      statCard("Wert meiner Geschenke", euro.format(giftTotal), "star", "var(--christmas-gold)"),
+        statCard("Geschenke von mir", String(myGifts.length), "check", "var(--christmas-green)")),
+      statCard("Wert der Geschenke, die ich schenken möchte", euro.format(giftTotal), "star", "var(--christmas-gold)"),
       recentItems.length > 0 && el("h2", { class: "section-title" }, "Zuletzt hinzugefügt"),
       recentItems.slice(0, 3).map((item) =>
         el("div", { class: "card recent-row", role: "button", tabindex: "0", onclick: () => openEditor(item) },
