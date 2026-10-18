@@ -356,3 +356,6 @@ body.picking .navbar { visibility: hidden; }
 .emoji-custom .primary-button { width: auto; padding: 0 18px; min-height: 44px; }
 .emoji-sheet .action-group { background: #fff; }
 @media (prefers-color-scheme: dark) { .emoji-sheet .action-group { background: rgb(28, 28, 30); } }
+
+/* Links in der Beschreibung */
+.details-link { color: var(--christmas-red); text-decoration: underline; word-break: break-all; }

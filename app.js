@@ -637,6 +637,25 @@ let editMode = false;
  * mode "gift": Wünsche anderer, mit Häkchen fürs Schenken
  * mode "shared": geteilter Link, nur ansehen
  */
+// Macht http(s)-Adressen in der Beschreibung anklickbar. Baut nur Textknoten und Links, nie HTML aus dem Text.
+function linkify(text) {
+  const parts = [];
+  let last = 0;
+  for (const match of text.matchAll(/https?:\/\/[^\s<>"]+/gi)) {
+    // Satzzeichen am Ende gehören meist nicht zur Adresse
+    const raw = match[0].replace(/[.,;:!?)\]}'"»“”]+$/, "");
+    let url;
+    try { url = new URL(raw); } catch { continue; }
+    if (url.protocol !== "http:" && url.protocol !== "https:") continue;
+    parts.push(text.slice(last, match.index));
+    parts.push(el("a", { class: "details-link", href: url.href, target: "_blank", rel: "noopener noreferrer",
+      onclick: (e) => e.stopPropagation() }, raw));
+    last = match.index + raw.length;
+  }
+  parts.push(text.slice(last));
+  return parts.filter((part) => part !== "");
+}
+
 function wishRow(item, number, { mode = "own" } = {}) {
   const readOnly = mode !== "own";
   const giftedBy = mode === "gift" ? gifts.get(item.id) : null;
@@ -673,7 +692,7 @@ function wishRow(item, number, { mode = "own" } = {}) {
 
   row.append(el("div", { class: "row-text" },
     el("span", { class: "row-name" }, item.name),
-    item.details && el("span", { class: "row-details" + (mode === "gift" ? " full" : "") }, item.details),
+    item.details && el("span", { class: "row-details" + (mode === "gift" ? " full" : "") }, linkify(item.details)),
     mode === "gift" && el("a", { class: "row-link", href: idealoSearchURL(item.name), target: "_blank", rel: "noopener",
       onclick: (e) => e.stopPropagation() }, icon("search", "icon"), "Bei Idealo suchen"),
     gifted && el("span", { class: "row-giver" }, mine ? "🎁 Das schenkst du" : `🎁 ${giver?.name ?? "Jemand"} schenkt das`)));
