@@ -89,6 +89,7 @@ main { max-width: 720px; margin: 0 auto; padding: 0 16px calc(env(safe-area-inse
   background: linear-gradient(to right, var(--christmas-red), rgba(184, 28, 38, 0.8));
 }
 .countdown .emoji { font-size: 34px; line-height: 1; }
+.countdown.december { background: linear-gradient(to right, var(--christmas-green), rgba(23, 94, 54, 0.8)); }
 
 .card {
   background: var(--material);

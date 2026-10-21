@@ -165,7 +165,9 @@ class LocalStore {
     const owners = new Map(wishes.map((w) => [w.id, w.owner]));
     // Wie in der Datenbank: nie die Geschenke für eigene Wünsche herausgeben
     const gifts = new Map(Object.entries(this.read("wunschzettel2026.gifts", {}))
-      .filter(([id]) => viewer && owners.has(id) && owners.get(id) !== viewer));
+      .filter(([id]) => viewer && owners.has(id) && owners.get(id) !== viewer)
+      // Wer schenkt, erfährt nur der Schenkende selbst
+      .map(([id, giver]) => [id, giver === viewer ? giver : "jemand"]));
     return { wishes, gifts, profiles: new Map(Object.entries(this.read("wunschzettel2026.profiles", {}))) };
   }
 
@@ -223,7 +225,7 @@ const store = useCloud ? new SupabaseStore(config.supabaseUrl, config.supabaseKe
 let status = "loading";
 let statusMessage = "";
 let wishes = [];
-/** wishId → Profil, das ihn schenkt; enthält nie Geschenke für eigene Wünsche */
+/** wishId → eigenes Profil, wenn ich ihn schenke, sonst "jemand"; enthält nie Geschenke für eigene Wünsche */
 let gifts = new Map();
 /** Profil → selbst ausgesuchtes Emoji (fehlt eins, gilt das Standard-Emoji) */
 let profileEmojis = new Map();
@@ -330,6 +332,21 @@ function countdownText() {
   if (days === 0) return "Heute ist Heiligabend! 🎅";
   if (days === 1) return "Noch 1 Tag bis Heiligabend";
   return `Noch ${days} Tage bis Heiligabend`;
+}
+
+/** Tage bis zum 1. Dezember; danach bis zum 1. Dezember im nächsten Jahr */
+function daysUntilDecemberFirst(date = new Date()) {
+  const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  let target = new Date(today.getFullYear(), 11, 1);
+  if (target < today) target = new Date(today.getFullYear() + 1, 11, 1);
+  return Math.round((target - today) / 86400000);
+}
+
+function decemberCountdownText() {
+  const days = daysUntilDecemberFirst();
+  if (days === 0) return "Heute ist der 1. Dezember! 🕯️";
+  if (days === 1) return "Noch 1 Tag bis zum 1. Dezember";
+  return `Noch ${days} Tage bis zum 1. Dezember`;
 }
 
 /** "12,99", "12.99" oder "1.299,00 €" → Zahl; leer → null */
@@ -612,6 +629,7 @@ function renderHome() {
     el("button", { class: "edit-avatar", onclick: openEmojiPicker }, avatar(currentProfile), el("span", {}, "Profilbild ändern")),
     el("div", { class: "stack" },
       el("div", { class: "countdown" }, el("span", { class: "emoji" }, "🎄"), el("span", {}, countdownText())),
+      el("div", { class: "countdown december" }, el("span", { class: "emoji" }, "🕯️"), el("span", {}, decemberCountdownText())),
       el("div", { class: "stat-row" },
         statCard("Meine Wünsche", String(own.length), "gift", "var(--christmas-red)"),
         statCard("Geschenke von mir", String(myGifts.length), "check", "var(--christmas-green)")),
@@ -672,11 +690,10 @@ function wishRow(item, number, { mode = "own" } = {}) {
 
   row.append(el("span", { class: "row-number" }, number + "."));
 
-  const giver = gifted ? profileById(giftedBy) : null;
   if (mode === "gift") {
     const check = el("button", {
       class: "check" + (mine ? " on" : gifted ? " taken" : ""),
-      "aria-label": mine ? "Ich schenke das" : gifted ? `${giver?.name ?? "Jemand"} schenkt das` : "Das schenke ich",
+      "aria-label": mine ? "Ich schenke das" : gifted ? "Wird schon geschenkt" : "Das schenke ich",
       "aria-pressed": mine ? "true" : "false",
       onclick: (e) => {
         e.stopPropagation();
@@ -695,7 +712,7 @@ function wishRow(item, number, { mode = "own" } = {}) {
     item.details && el("span", { class: "row-details" + (mode === "gift" ? " full" : "") }, linkify(item.details)),
     mode === "gift" && el("a", { class: "row-link", href: idealoSearchURL(item.name), target: "_blank", rel: "noopener",
       onclick: (e) => e.stopPropagation() }, icon("search", "icon"), "Bei Idealo suchen"),
-    gifted && el("span", { class: "row-giver" }, mine ? "🎁 Das schenkst du" : `🎁 ${giver?.name ?? "Jemand"} schenkt das`)));
+    gifted && el("span", { class: "row-giver" }, mine ? "🎁 Das schenkst du" : "🎁 Wird schon geschenkt")));
 
   // Bei den Wünschen der anderen steht der Preis unter dem Namen, damit die Beschreibung Platz hat
   if (item.bestPrice != null) {
@@ -793,7 +810,7 @@ function renderOthers() {
   setNav({ back: true, actions: [profileButton()] });
   app.replaceChildren(
     el("h1", { class: "large-title" }, "🎁 Wünsche der anderen"),
-    el("p", { class: "page-hint" }, "Hake ab, was du schenken möchtest. Die anderen sehen dann, dass es schon vergeben ist. Wer sich das gewünscht hat, sieht es nie."),
+    el("p", { class: "page-hint" }, "Hake ab, was du schenken möchtest. Die anderen sehen dann nur, dass es schon geschenkt wird, aber nicht von wem. Wer sich das gewünscht hat, sieht es nie."),
     ...otherProfiles().map((profile) => {
       const list = wishesOf(profile.id);
       return el("section", { class: "group" },
