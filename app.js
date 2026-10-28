@@ -634,6 +634,9 @@ function renderHome() {
         statCard("Meine Wünsche", String(own.length), "gift", "var(--christmas-red)"),
         statCard("Geschenke von mir", String(myGifts.length), "check", "var(--christmas-green)")),
       statCard("Wert der Geschenke, die ich schenken möchte", euro.format(giftTotal), "star", "var(--christmas-gold)"),
+      // Nur die eigenen Häkchen; wer sich etwas gewünscht hat, bekommt diese Liste nie zu sehen
+      myGifts.length > 0 && el("h2", { class: "section-title" }, "Das möchte ich schenken"),
+      myGifts.length > 0 && el("ul", { class: "list" }, sortedGifts(myGifts).map((item, i) => wishRow(item, i + 1, { mode: "gift", showOwner: true }))),
       recentItems.length > 0 && el("h2", { class: "section-title" }, "Zuletzt hinzugefügt"),
       recentItems.slice(0, 3).map((item) =>
         el("div", { class: "card recent-row", role: "button", tabindex: "0", onclick: () => openEditor(item) },
@@ -674,12 +677,19 @@ function linkify(text) {
   return parts.filter((part) => part !== "");
 }
 
-function wishRow(item, number, { mode = "own" } = {}) {
+/** Nach Profil-Reihenfolge, innerhalb eines Profils wie dessen Liste */
+function sortedGifts(list) {
+  const order = (w) => PROFILES.findIndex((p) => p.id === w.owner);
+  return sortedItems(list).sort((a, b) => order(a) - order(b));
+}
+
+function wishRow(item, number, { mode = "own", showOwner = false } = {}) {
   const readOnly = mode !== "own";
   const giftedBy = mode === "gift" ? gifts.get(item.id) : null;
   const gifted = !!giftedBy;
   const mine = gifted && giftedBy === currentProfile.id;
-  const row = el("li", { class: "row" + (mode === "gift" ? " gift-row" : "") + (gifted ? " purchased" : "") + (editMode && !readOnly ? " editing" : ""), "data-id": item.id });
+  // In "Das möchte ich schenken" ist jeder Eintrag abgehakt, deshalb dort nicht ausgegraut
+  const row = el("li", { class: "row" + (mode === "gift" ? " gift-row" : "") + (gifted && !showOwner ? " purchased" : "") + (editMode && !readOnly ? " editing" : ""), "data-id": item.id });
 
   if (!readOnly) {
     row.append(el("button", { class: "delete-dot", "aria-label": "Löschen", onclick: (e) => {
@@ -709,6 +719,7 @@ function wishRow(item, number, { mode = "own" } = {}) {
 
   row.append(el("div", { class: "row-text" },
     el("span", { class: "row-name" }, item.name),
+    showOwner && el("span", { class: "row-owner" }, `für ${profileById(item.owner)?.name ?? "jemanden"}`),
     item.details && el("span", { class: "row-details" + (mode === "gift" ? " full" : "") }, linkify(item.details)),
     mode === "gift" && el("a", { class: "row-link", href: idealoSearchURL(item.name), target: "_blank", rel: "noopener",
       onclick: (e) => e.stopPropagation() }, icon("search", "icon"), "Bei Idealo suchen"),

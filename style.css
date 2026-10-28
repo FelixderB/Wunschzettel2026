@@ -360,3 +360,6 @@ body.picking .navbar { visibility: hidden; }
 
 /* Links in der Beschreibung */
 .details-link { color: var(--christmas-red); text-decoration: underline; word-break: break-all; }
+
+/* Startseite: Das möchte ich schenken */
+.row-owner { font-size: 14px; font-weight: 600; color: var(--christmas-green); }
